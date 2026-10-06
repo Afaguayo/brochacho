@@ -41,6 +41,8 @@ if (-not ((claude plugin list) -match "discord@claude-plugins-official")) {
     claude plugin marketplace add anthropics/claude-plugins-official
     claude plugin install discord@claude-plugins-official --scope user
 }
+# Off for normal sessions; the launcher turns it on just for Brochacho (brochacho.settings.json).
+claude plugin disable discord@claude-plugins-official --scope user 2>$null | Out-Null
 
 # 3. Shortcuts.
 $launchArgs = "-NoExit -ExecutionPolicy Bypass -File `"$PSScriptRoot\start-brochacho.ps1`""

@@ -13,6 +13,8 @@ if ! claude plugin list | grep -q "discord@claude-plugins-official"; then
   claude plugin marketplace add anthropics/claude-plugins-official || true
   claude plugin install discord@claude-plugins-official --scope user
 fi
+# Off for normal sessions; the launcher turns it on just for Brochacho (brochacho.settings.json).
+claude plugin disable discord@claude-plugins-official --scope user >/dev/null 2>&1 || true
 
 chmod +x "$REPO/macos/"*.sh "$REPO/tools/wake.py"
 CMD="$HOME/Desktop/Brochacho.command"
