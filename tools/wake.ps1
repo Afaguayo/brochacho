@@ -12,13 +12,16 @@ $cfg = Join-Path $HOME ".brochacho\machines.json"
 $machines = if (Test-Path $cfg) { Get-Content $cfg -Raw | ConvertFrom-Json } else { $null }
 
 if ($List -or -not $Target) {
-    if ($machines) { $machines.PSObject.Properties | ForEach-Object { "{0,-12} {1}  ({2})" -f $_.Name, $_.Value.mac, $_.Value.os } }
+    if ($machines) { $machines.PSObject.Properties | ForEach-Object { "{0,-12} {1}  ({2}) {3}" -f $_.Name, $_.Value.mac, $_.Value.os, $(if ($_.Value.aliases) { "aka " + ($_.Value.aliases -join ", ") }) } }
     else { "No machines yet in $cfg" }
     exit 0
 }
 
 $broadcast = "255.255.255.255"
-$entry = if ($machines) { $machines.PSObject.Properties[$Target.ToLower()] } else { $null }
+# Match a machine by name or by one of its "aliases".
+$entry = if ($machines) {
+    $machines.PSObject.Properties | Where-Object { $_.Name -eq $Target.ToLower() -or $_.Value.aliases -contains $Target.ToLower() } | Select-Object -First 1
+} else { $null }
 if ($entry) {
     $mac = $entry.Value.mac
     if ($entry.Value.broadcast) { $broadcast = $entry.Value.broadcast }

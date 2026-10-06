@@ -74,7 +74,8 @@ if ($nic) {
     $ip = Get-NetIPAddress -InterfaceIndex $nic.ifIndex -AddressFamily IPv4 | Select-Object -First 1
     $bcast = ($ip.IPAddress -replace '\.\d+$', '.255')
     $name = $env:COMPUTERNAME.ToLower()
-    $entry = [pscustomobject]@{ mac = $nic.MacAddress; broadcast = $bcast; os = "windows" }
+    $entry = [pscustomobject]@{ mac = $nic.MacAddress; broadcast = $bcast; os = "windows"; aliases = @("pc") }
+    if ($machines.$name.aliases) { $entry.aliases = @($machines.$name.aliases) }   # keep aliases on re-install
     $machines | Add-Member -NotePropertyName $name -NotePropertyValue $entry -Force
     [IO.File]::WriteAllText($cfg, ($machines | ConvertTo-Json -Depth 5), (New-Object Text.UTF8Encoding($false)))
     Write-Host "Registered '$name' ($($nic.MacAddress)) in $cfg" -ForegroundColor Green

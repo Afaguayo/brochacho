@@ -46,9 +46,9 @@ EOF
 
 run() {
   if [ "$STAY_AWAKE" = 1 ]; then
-    caffeinate -is claude --channels plugin:discord@claude-plugins-official --permission-mode acceptEdits --append-system-prompt "$PERSONA"
+    caffeinate -is claude --settings "$REPO/brochacho.settings.json" --channels plugin:discord@claude-plugins-official --permission-mode acceptEdits --append-system-prompt "$PERSONA"
   else
-    claude --channels plugin:discord@claude-plugins-official --permission-mode acceptEdits --append-system-prompt "$PERSONA"
+    claude --settings "$REPO/brochacho.settings.json" --channels plugin:discord@claude-plugins-official --permission-mode acceptEdits --append-system-prompt "$PERSONA"
   fi
 }
 

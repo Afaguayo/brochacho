@@ -70,7 +70,7 @@ Write-Host @"
 
 # Restart after a crash or a dropped connection; a clean /exit (code 0) stops for good.
 while ($true) {
-    claude --channels plugin:discord@claude-plugins-official --permission-mode acceptEdits --append-system-prompt $persona
+    claude --settings (Join-Path $repo "brochacho.settings.json") --channels plugin:discord@claude-plugins-official --permission-mode acceptEdits --append-system-prompt $persona
     if ($LASTEXITCODE -eq 0) { break }
     Write-Host "Brochacho stopped (exit $LASTEXITCODE). Restarting in 10 s; close the window to cancel." -ForegroundColor Yellow
     Start-Sleep 10

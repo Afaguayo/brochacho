@@ -23,13 +23,16 @@ def main(argv):
     machines = load()
     if len(argv) < 2 or argv[1] == "--list":
         for name, m in machines.items():
-            print(f"{name:<12} {m.get('mac')}  ({m.get('os', '?')})")
+            aka = f" aka {', '.join(m['aliases'])}" if m.get("aliases") else ""
+            print(f"{name:<12} {m.get('mac')}  ({m.get('os', '?')}){aka}")
         if not machines:
             print(f"No machines yet in {CFG}")
         return 0
 
     target = argv[1]
-    entry = machines.get(target.lower())
+    # Match a machine by name or by one of its "aliases".
+    key = target.lower()
+    entry = machines.get(key) or next((m for m in machines.values() if key in m.get("aliases", [])), None)
     if entry:
         mac, broadcast = entry["mac"], entry.get("broadcast", "255.255.255.255")
     elif MAC_RE.match(target):
