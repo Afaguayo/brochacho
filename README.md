@@ -51,6 +51,7 @@ that's already running. The official `discord@claude-plugins-official` plugin br
 This repo adds the parts that make it a daily driver:
 
 - **Launchers** (`windows/start-brochacho.ps1`, `macos/start-brochacho.sh`): single-instance lock, `git pull` on start, auto-restart loop, optional keep-awake, and a persona prompt ([`brochacho.md`](brochacho.md)).
+- **Plugin scoping**: the Discord plugin stays disabled globally and is enabled only in the Brochacho session (`--settings brochacho.settings.json`), so your other Claude sessions never connect to the bot.
 - **Installers**: Bun + plugin install, Desktop shortcut with an icon, auto-start, and registering the machine for Wake-on-LAN.
 - **Token setup**: paste the bot token once; the script saves it outside your repo, derives the bot's ID from the token and opens the invite link with exactly the permissions needed.
 - **Wake tools** (`tools/wake.ps1`, `tools/wake.py`): dependency-free Wake-on-LAN, driven by `~/.brochacho/machines.json`.
@@ -124,6 +125,7 @@ To never sleep while it runs instead: `start-brochacho.ps1 -StayAwake` / `start-
 
 ```
 brochacho.md            persona prompt appended to every session
+brochacho.settings.json enables the Discord plugin only for Brochacho sessions
 windows/                install.ps1 · setup.ps1 · start-brochacho.ps1
 macos/                  install.sh  · setup.sh  · start-brochacho.sh
 tools/                  wake.ps1 · wake.py (Wake-on-LAN)
