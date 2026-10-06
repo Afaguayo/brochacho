@@ -1,0 +1,4 @@
+{
+  "desktop-pc": { "mac": "A1-B2-C3-D4-E5-F6", "broadcast": "192.168.1.255", "os": "windows" },
+  "macbook":    { "mac": "a1:b2:c3:d4:e5:f7", "broadcast": "192.168.1.255", "os": "macos" }
+}
