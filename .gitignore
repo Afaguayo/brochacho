@@ -3,3 +3,5 @@
 machines.json
 .DS_Store
 __pycache__/
+dist/
+build/work/
