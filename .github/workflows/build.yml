@@ -1,0 +1,61 @@
+name: Build Brochacho
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            built: dist/Brochacho.exe
+            asset: Brochacho.exe
+          - os: macos-latest
+            built: dist/brochacho
+            asset: brochacho-macos-arm64
+          - os: macos-15-intel
+            built: dist/brochacho
+            asset: brochacho-macos-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install pyinstaller certifi
+      - run: python build/build.py
+      - name: Smoke test
+        shell: bash
+        run: |
+          ./${{ matrix.built }} --version
+          ./${{ matrix.built }} wake --list
+          ./${{ matrix.built }} --help
+      - name: Rename
+        shell: bash
+        run: mkdir -p out && cp "${{ matrix.built }}" "out/${{ matrix.asset }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: out/${{ matrix.asset }}
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: out/*
+          generate_release_notes: true
