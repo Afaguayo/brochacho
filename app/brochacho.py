@@ -63,6 +63,12 @@ INTENT_MESSAGE_CONTENT = (1 << 18) | (1 << 19)   # GATEWAY_MESSAGE_CONTENT(_LIMI
 WHISPER = "whisper-ctranslate2==0.5.8"            # local speech-to-text, run through uvx
 WHISPER_PYTHON = "3.12"
 
+# Session defaults, each overridable in ~/.brochacho/config.json. A phone chat rarely needs deep
+# thinking, and a smaller auto-compact window keeps every new DM from resending a huge history.
+SESSION = {"model": "opus", "fallback_model": "sonnet,haiku", "effort": "medium", "autocompact": "150000"}
+FREE_MODEL = Path.home() / ".claude" / "bin" / "free-model"   # optional OmniRoute helper
+OMNIROUTE_URL = "http://localhost:20128"
+
 MODES = {
     # key: (label, claude flags, explanation)
     "auto": ("Hands-free (recommended)", ["--permission-mode", "auto"],
@@ -425,6 +431,8 @@ def build_settings(cfg):
     ]
     if FROZEN:
         allow += [f"Bash({me} transcribe:*)", f"Bash({me} wake:*)"]
+    if FREE_MODEL.exists():  # handing mundane text jobs to free models saves Claude tokens
+        allow += ["Bash(~/.claude/bin/free-model:*)", "Bash(printf:*)", "Bash(echo:*)"]
     secrets = ["~/.claude/channels/discord/.env", "~/.claude/channels/discord/access.json"]
     deny = [f"{tool}({p})" for p in secrets for tool in ("Read", "Edit")]
     return {"enabledPlugins": {PLUGIN: True}, "permissions": {"allow": allow, "deny": deny}}
@@ -441,6 +449,18 @@ def build_persona(cfg):
         f"- Attachments are downloaded to {INBOX}.",
         f"- Wake tool: {me} wake <machine-name>   (list machines: {me} wake --list)",
     ]
+    if cfg.get("backend") == "free":
+        lines.append("- You are running on free models through OmniRoute because Claude is out of usage or "
+                     "unavailable. Say so once in your first reply; keep tasks simple.")
+    elif FREE_MODEL.exists():
+        lines += [
+            "- Save Claude tokens: for mundane, low-stakes text jobs (summarizing public text, reformatting, "
+            "translating, drafting wording, bulk labelling) run: printf '%s' \"<task and text>\" | "
+            "~/.claude/bin/free-model   and check its answer. Never send personal notes, secrets or other "
+            "people's data to it. If it fails, do the job yourself.",
+            "- For broad file searches or bulk reading, use a subagent on a cheap model (haiku) and keep only "
+            "its conclusion; don't re-read files you've already seen.",
+        ]
     if cfg.get("voice"):
         lines.append(f"- Voice transcription: {me} transcribe <audio-file>   (prints the text)")
     else:
@@ -451,9 +471,14 @@ def build_persona(cfg):
 
 def claude_command(cfg):
     mode = MODES.get(cfg.get("mode", "auto"), MODES["auto"])
+    opt = {k: cfg.get(k, v) for k, v in SESSION.items()}
+    model = ["--model", opt["model"], "--fallback-model", opt["fallback_model"]]
+    if cfg.get("backend") == "free":
+        model = []  # OmniRoute picks the model through ANTHROPIC_MODEL
     return ["claude", "--settings", str(SETTINGS_FILE),
             "--channels", f"plugin:{PLUGIN}",
-            *mode[1],
+            *mode[1], *model,
+            "--effort", opt["effort"], "--autocompact", str(opt["autocompact"]),
             "--add-dir", str(INBOX),
             "--append-system-prompt-file", str(PERSONA_FILE)]
 
@@ -1060,6 +1085,22 @@ def stay_awake():
         subprocess.Popen(["caffeinate", "-is", "-w", str(os.getpid())])
 
 
+def use_free_backend(env):
+    """Point Claude Code at the local OmniRoute gateway, which routes to free models."""
+    omni = which("omniroute")
+    if not omni:
+        bad("Free mode needs OmniRoute (npm install -g omniroute) with provider keys added.")
+        return False
+    try:
+        urllib.request.urlopen(OMNIROUTE_URL, timeout=2)
+    except (urllib.error.URLError, OSError):
+        subprocess.Popen(resolve([omni, "serve", "--daemon", "--no-open", "--no-tray"]),
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(8)
+    env.update(ANTHROPIC_BASE_URL=OMNIROUTE_URL, ANTHROPIC_AUTH_TOKEN="omniroute", ANTHROPIC_MODEL="auto")
+    return True
+
+
 def cmd_start(args):
     if IS_WIN:
         os.system("title Brochacho")
@@ -1082,7 +1123,6 @@ def cmd_start(args):
         bad(f"The folder {vault} is gone. Run setup to pick another.")
         return 1
     write_json(SETTINGS_FILE, build_settings(cfg))
-    PERSONA_FILE.write_text(build_persona(cfg), encoding="utf-8")
     INBOX.mkdir(parents=True, exist_ok=True)
     if args.stay_awake or cfg.get("stay_awake"):
         stay_awake()
@@ -1091,6 +1131,11 @@ def cmd_start(args):
     env = dict(os.environ)
     if FROZEN:
         env["PATH"] = str(Path(sys.executable).resolve().parent) + os.pathsep + env["PATH"]
+    if getattr(args, "free", False):
+        cfg["backend"] = "free"
+    if cfg.get("backend") == "free" and not use_free_backend(env):
+        return 1
+    PERSONA_FILE.write_text(build_persona(cfg), encoding="utf-8")
     say(f"""
   +------------------------------------------------+
   |  BROCHACHO is on. DM your bot on Discord.      |
@@ -1098,6 +1143,7 @@ def cmd_start(args):
   +------------------------------------------------+
   folder: {vault}
   mode:   {MODES.get(cfg.get('mode', 'auto'), MODES['auto'])[0]}    voice: {'on' if cfg.get('voice') else 'off'}
+  model:  {'free models (OmniRoute)' if cfg.get('backend') == 'free' else cfg.get('model', SESSION['model'])}    effort: {cfg.get('effort', SESSION['effort'])}
 """, "cyan")
     quick_fails = 0
     while True:  # restart after a crash or dropped connection; a clean /exit stops for good
@@ -1139,7 +1185,7 @@ def menu():
     if not cfg.get("setup_done"):
         return cmd_setup()
     banner(f"Brochacho  v{VERSION}")
-    options = [("Start Brochacho", lambda: cmd_start(argparse.Namespace(vault=None, stay_awake=False))),
+    options = [("Start Brochacho", lambda: cmd_start(argparse.Namespace(vault=None, stay_awake=False, free=False))),
                ("Re-run setup", cmd_setup), ("Check that everything works", cmd_doctor),
                ("Pair a Discord account", cmd_pair), ("Remove shortcuts", cmd_uninstall)]
     for i, (label, _) in enumerate(options, 1):
@@ -1158,6 +1204,7 @@ def main(argv=None):
     s = sub.add_parser("start", help="start Brochacho")
     s.add_argument("--vault", help="folder to work in (default: the one picked in setup)")
     s.add_argument("--stay-awake", action="store_true", help="keep the computer awake while running")
+    s.add_argument("--free", action="store_true", help="run on free models through OmniRoute (backup)")
     sub.add_parser("setup", help="run the setup wizard")
     sub.add_parser("doctor", help="check every requirement")
     sub.add_parser("pair", help="approve your Discord account")

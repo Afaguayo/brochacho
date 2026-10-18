@@ -142,13 +142,25 @@ In every mode, Discord replies, reading photos and voice notes, and Brochacho's 
 
 If your plan doesn't include auto mode yet, Brochacho tells you when it keeps failing to start: pick **Ask before commands** instead.
 
+## 💸 Model and token use
+
+Every session starts on the latest Opus (`--model opus`), falls back to Sonnet, then Haiku, when Opus is overloaded, runs at **medium** effort, and auto-compacts at 150k tokens so each new DM doesn't resend a huge history. Change any of these in `~/.brochacho/config.json`:
+
+```json
+{ "model": "opus", "fallback_model": "sonnet,haiku", "effort": "medium", "autocompact": "150000" }
+```
+
+Your own Claude Code skills, plugins and `~/.claude/CLAUDE.md` load in Brochacho sessions as usual.
+
+**Free models (optional).** If you use [OmniRoute](https://www.npmjs.com/package/omniroute) and have a `~/.claude/bin/free-model` script that sends stdin to it, Brochacho pre-approves it and tells Claude to hand it mundane, non-sensitive text jobs to save tokens. When Claude is out of usage, `start --free` (or `"backend": "free"` in the config) runs the whole session on OmniRoute's free models instead. They are weaker than Claude.
+
 ## 🧰 Commands
 
 Double-clicking the program shows a menu. The same things work from a terminal (`Brochacho.exe <command>` on Windows, `~/.brochacho/bin/brochacho <command>` on macOS):
 
 | Command | Does |
 |---|---|
-| `start` | Start Brochacho (what the Desktop shortcut runs). `--stay-awake` keeps the computer awake. |
+| `start` | Start Brochacho (what the Desktop shortcut runs). `--stay-awake` keeps the computer awake; `--free` runs on free models through OmniRoute. |
 | `setup` | Run the setup wizard again. |
 | `doctor` | Check every requirement and tell you exactly what to fix. |
 | `pair` | Approve a Discord account with the code the bot sends. |
