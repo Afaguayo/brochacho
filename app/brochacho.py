@@ -37,7 +37,7 @@ import wave
 import webbrowser
 from pathlib import Path
 
-VERSION = "2.0.0"
+VERSION = "2.1.0"
 IS_WIN = os.name == "nt"
 IS_MAC = sys.platform == "darwin"
 FROZEN = getattr(sys, "frozen", False)
